@@ -4,8 +4,9 @@
 
 echo "🚀 Запуск Exoplanet AI Backend..."
 
-# Переходим в директорию backend
-cd backend
+# Переходим в директорию backend относительно расположения скрипта
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/backend"
 
 # Проверяем наличие виртуального окружения
 if [ ! -d "venv" ]; then

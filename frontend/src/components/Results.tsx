@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import Plot from 'react-plotly.js';
+import React from 'react';
+const Plot = React.lazy(() => import('react-plotly.js'));
 import { 
   Download, 
   BarChart3, 
@@ -298,14 +299,20 @@ const Results: React.FC<ResultsProps> = ({
 
         <div className="h-96">
           {activeTab === 'lightcurve' && (
-            <Plot {...lightcurvePlot} style={{ width: '100%', height: '100%' }} />
+            <React.Suspense fallback={<div />}> 
+              <Plot {...lightcurvePlot} style={{ width: '100%', height: '100%' }} />
+            </React.Suspense>
           )}
           {activeTab === 'periodogram' && (
-            <Plot {...periodogramPlot} style={{ width: '100%', height: '100%' }} />
+            <React.Suspense fallback={<div />}> 
+              <Plot {...periodogramPlot} style={{ width: '100%', height: '100%' }} />
+            </React.Suspense>
           )}
           {activeTab === 'phased' && (
             selectedCandidate ? (
-              <Plot {...phasedPlot} style={{ width: '100%', height: '100%' }} />
+              <React.Suspense fallback={<div />}> 
+                <Plot {...phasedPlot} style={{ width: '100%', height: '100%' }} />
+              </React.Suspense>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-400">
                 <div className="text-center">

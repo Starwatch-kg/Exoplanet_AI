@@ -1,5 +1,5 @@
 // API клиент для взаимодействия с backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 export interface LightcurveData {
   tic_id: string;
@@ -60,6 +60,11 @@ class ExoplanetAPI {
       },
     };
 
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      (defaultOptions.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, { ...defaultOptions, ...options });
 
     if (!response.ok) {
@@ -71,7 +76,7 @@ class ExoplanetAPI {
   }
 
   // Проверка состояния API
-  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+  async healthCheck(): Promise<{ status: string; uptimeSec: number }> {
     return this.request('/health');
   }
 

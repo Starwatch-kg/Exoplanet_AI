@@ -175,3 +175,67 @@ MIT License - см. файл LICENSE
 ---
 
 **🚀 Исследуйте Вселенную с помощью ИИ!**
+
+---
+
+## 🐳 Быстрый старт (Docker)
+
+1. Требуется Docker и Docker Compose
+2. Запуск:
+
+```bash
+docker compose up --build
+```
+
+- Backend: `http://localhost:8080/api`, Swagger: `http://localhost:8080/api/docs`
+- Frontend (dev отдельно):
+
+```bash
+cd frontend && npm i && npm run dev
+```
+
+Укажите `VITE_API_URL=http://localhost:8080/api`.
+
+## 🔐 Переменные окружения (backend)
+
+Создайте файл `.env` в `apps/backend` (см. `.env.example`):
+
+```
+NODE_ENV=development
+PORT=8080
+HOST=0.0.0.0
+CORS_ORIGIN=http://localhost:5173
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/exoplanet_ai?schema=public
+REDIS_URL=redis://localhost:6379
+JWT_ACCESS_SECRET=replace_me_access
+JWT_REFRESH_SECRET=replace_me_refresh
+JWT_ACCESS_TTL=15m
+JWT_REFRESH_TTL=7d
+SENTRY_DSN=
+```
+
+## 🧪 Тесты
+
+- Backend: Jest (`npm run test` в `apps/backend`)
+- Frontend: Playwright (`npm run test:e2e` в `frontend`)
+
+## 🔧 CI/CD
+
+- GitHub Actions: build backend (TypeScript), Prisma generate/migrate/seed, build frontend
+- E2E: Playwright (Vite preview + браузеры) запускается в отдельной задаче
+
+## 🧹 Качество кода
+
+- ESLint + Prettier; Husky + lint-staged для backend и frontend
+
+## ✅ Acceptance checklist
+
+- [ ] Landing, How it works, Demo доступны и корректны
+- [ ] Swagger доступен: `/api/docs`
+- [ ] Auth: регистрация/вход/refresh/logout, защищённые эндпоинты требуют JWT
+- [ ] NASA статистика отображается на лендинге
+- [ ] Redis кеш активен (NASA, refresh-токены)
+- [ ] Prisma миграции применяются, сиды создают демо-данные
+- [ ] Тесты проходят (Jest unit, Playwright E2E)
+- [ ] Lighthouse ≥ 90 (Perf/Acc/Best/SEO) на Landing и Demo
+- [ ] Секреты в ENV, нет секретов в репозитории

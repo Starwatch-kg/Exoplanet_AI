@@ -4,8 +4,9 @@
 
 echo "🚀 Запуск Exoplanet AI Frontend..."
 
-# Переходим в директорию frontend
-cd frontend
+# Переходим в директорию frontend относительно расположения скрипта
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/frontend"
 
 # Проверяем наличие node_modules
 if [ ! -d "node_modules" ]; then

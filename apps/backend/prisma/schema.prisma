@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique @db.Citext
+  passwordHash String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  candidates   Candidate[]
+}
+
+model Candidate {
+  id           String   @id @default(cuid())
+  userId       String
+  status       CandidateStatus @default(PENDING)
+  target       String
+  periodDays   Float?
+  depthPpm     Float?
+  score        Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
+  @@index([userId, status])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum CandidateStatus {
+  PENDING
+  PROCESSING
+  FOUND
+  REJECTED
+}
+
+
