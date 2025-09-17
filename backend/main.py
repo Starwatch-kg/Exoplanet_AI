@@ -155,51 +155,10 @@ async def health_check():
 async def get_nasa_stats():
     """Получение статистики NASA для лендинга"""
     return {
-        "totalPlanets": 5635,  # Примерное количество подтвержденных экзопланет
-        "totalHosts": 4143     # Примерное количество звезд-хозяев
+        "totalPlanets": 10000,  # Примерное количество подтвержденных экзопланет
+        "totalHosts": 6000     # Примерное количество звезд-хозяев
     }
 
-@app.get("/models")
-async def get_available_models():
-    """Получение списка доступных моделей"""
-    return {
-        "models": [
-            {
-                "id": "autoencoder",
-                "name": "Autoencoder",
-                "description": "Автоэнкодер для детекции аномалий",
-                "parameters": {
-                    "latent_dim": 64,
-                    "threshold": 0.1
-                }
-            },
-            {
-                "id": "classifier",
-                "name": "Classifier",
-                "description": "Классификатор транзитов",
-                "parameters": {
-                    "confidence_threshold": 0.5
-                }
-            },
-            {
-                "id": "hybrid",
-                "name": "Hybrid (BLS + NN)",
-                "description": "Гибридный подход",
-                "parameters": {
-                    "min_period": 0.5,
-                    "max_period": 25.0
-                }
-            },
-            {
-                "id": "ensemble",
-                "name": "Ensemble",
-                "description": "Ансамбль всех моделей",
-                "parameters": {
-                    "weights": {"autoencoder": 0.3, "classifier": 0.4, "hybrid": 0.3}
-                }
-            }
-        ]
-    }
 
 @app.post("/load-tic")
 async def load_tic_data(request: TICRequest):
@@ -378,22 +337,6 @@ def _simple_transit_detection(times: np.ndarray, fluxes: np.ndarray, method: str
     
     return candidates
 
-@app.get("/results/{tic_id}")
-async def get_analysis_results(tic_id: str):
-    """Получение сохраненных результатов анализа"""
-    if tic_id not in analysis_results:
-        raise HTTPException(status_code=404, detail="Результаты не найдены")
-    
-    return analysis_results[tic_id]
-
-@app.delete("/results/{tic_id}")
-async def clear_analysis_results(tic_id: str):
-    """Очистка результатов анализа"""
-    if tic_id in analysis_results:
-        del analysis_results[tic_id]
-        return {"message": "Результаты удалены"}
-    else:
-        raise HTTPException(status_code=404, detail="Результаты не найдены")
 
 if __name__ == "__main__":
     uvicorn.run(

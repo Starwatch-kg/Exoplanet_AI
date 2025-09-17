@@ -80,11 +80,6 @@ class ExoplanetAPI {
     return this.request('/health');
   }
 
-  // Получение доступных моделей
-  async getModels(): Promise<{ models: ModelInfo[] }> {
-    return this.request('/models');
-  }
-
   // Загрузка данных TESS по TIC ID
   async loadTICData(ticId: string, sectors?: number[]): Promise<{
     success: boolean;
@@ -112,22 +107,6 @@ class ExoplanetAPI {
         model_type: modelType,
         parameters: parameters,
       }),
-    });
-  }
-
-  // Получение сохраненных результатов
-  async getResults(ticId: string): Promise<{
-    candidates: Candidate[];
-    statistics: Record<string, any>;
-    timestamp: string;
-  }> {
-    return this.request(`/results/${ticId}`);
-  }
-
-  // Очистка результатов
-  async clearResults(ticId: string): Promise<{ message: string }> {
-    return this.request(`/results/${ticId}`, {
-      method: 'DELETE',
     });
   }
 }
