@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import React from 'react';
 const Plot = React.lazy(() => import('react-plotly.js'));
 import { 
   Download, 

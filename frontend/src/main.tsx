@@ -1,9 +1,10 @@
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
+
 const Landing = React.lazy(() => import('./pages/Landing'))
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'))
 const Login = React.lazy(() => import('./pages/Login'))

@@ -1,14 +1,13 @@
+/* Tailwind CSS directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-slate-700;
-  }
-  
   body {
-    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen;
+    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a);
+    color: white;
+    min-height: 100vh;
     font-family: 'Inter', system-ui, sans-serif;
   }
   
@@ -19,27 +18,66 @@
 
 @layer components {
   .cosmic-gradient {
-    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900;
+    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a);
   }
   
   .glass-effect {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
   
   .glow-effect {
-    @apply shadow-lg shadow-cyan-500/25;
+    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
   }
   
   .space-card {
-    @apply glass-effect rounded-xl p-6 glow-effect hover:shadow-cyan-500/40 transition-all duration-300;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
+    transition: all 0.3s;
+  }
+  
+  .space-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.4);
   }
   
   .cosmic-button {
-    @apply bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 glow-effect;
+    background: linear-gradient(to right, #06b6d4, #9333ea);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s;
+    transform: scale(1);
+    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
+  }
+  
+  .cosmic-button:hover {
+    background: linear-gradient(to right, #0891b2, #7c3aed);
+    transform: scale(1.05);
   }
   
   .cosmic-input {
-    @apply bg-slate-800/50 border border-cyan-500/30 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    color: white;
+    transition: all 0.3s;
+  }
+  
+  .cosmic-input::placeholder {
+    color: rgba(148, 163, 184, 1);
+  }
+  
+  .cosmic-input:focus {
+    border-color: #22d3ee;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
   }
 }
 
@@ -49,15 +87,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-slate-800;
+  background-color: #1e293b;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-cyan-500/50 rounded-full;
+  background-color: rgba(6, 182, 212, 0.5);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-cyan-400/70;
+  background-color: rgba(34, 211, 238, 0.7);
 }
 
 /* Starfield animation */

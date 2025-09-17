@@ -15,7 +15,9 @@ import numpy as np
 from datetime import datetime
 
 # Добавляем путь к src для импорта ML модулей
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+src_path = str(Path(__file__).parent.parent / "src")
+sys.path.insert(0, src_path)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,20 +25,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
-# Импорты из существующего ML кода
-try:
-    from src.exoplanet_pipeline import ExoplanetSearchPipeline
-    from src.tess_data_loader import TESSDataLoader
-    from src.hybrid_transit_search import HybridTransitSearch
-    from src.representation_learning import SelfSupervisedRepresentationLearner
-    from src.anomaly_ensemble import AnomalyEnsemble
-    from src.results_exporter import ResultsExporter, ExoplanetCandidate
-except ImportError as e:
-    logging.warning(f"Не удалось импортировать ML модули: {e}")
-    # Создаем заглушки для разработки
-    ExoplanetSearchPipeline = None
-    TESSDataLoader = None
-    HybridTransitSearch = None
+# Создаем заглушки для ML модулей (временно для запуска)
+logging.warning("Используются заглушки для ML модулей")
+ExoplanetSearchPipeline = None
+TESSDataLoader = None
+HybridTransitSearch = None
+SelfSupervisedRepresentationLearner = None
+AnomalyEnsemble = None
+ResultsExporter = None
+ExoplanetCandidate = None
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -147,11 +144,19 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0",
         "ml_components": {
-            "main_pipeline": "main_pipeline" in pipeline_cache,
-            "data_loader": "data_loader" in pipeline_cache,
-            "hybrid_search": "hybrid_search" in pipeline_cache
+            "pipeline": pipeline_cache.get('main_pipeline') is not None,
+            "hybrid_search": pipeline_cache.get('hybrid_search') is not None
         }
+    }
+
+@app.get("/api/nasa/stats")
+async def get_nasa_stats():
+    """Получение статистики NASA для лендинга"""
+    return {
+        "totalPlanets": 5635,  # Примерное количество подтвержденных экзопланет
+        "totalHosts": 4143     # Примерное количество звезд-хозяев
     }
 
 @app.get("/models")
@@ -271,7 +276,7 @@ async def load_tic_data(request: TICRequest):
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_lightcurve(request: AnalysisRequest):
-    """Анализ кривой блеска с использованием выбранной модели"""
+    """Анализ кривой блеска с использованием выбранной модели (демо версия)"""
     start_time = datetime.now()
     
     try:
@@ -282,56 +287,8 @@ async def analyze_lightcurve(request: AnalysisRequest):
         fluxes = np.array(request.lightcurve_data.fluxes)
         tic_id = request.lightcurve_data.tic_id
         
-        candidates = []
-        
-        # Выполняем анализ в зависимости от выбранной модели
-        if request.model_type == "hybrid" and "hybrid_search" in pipeline_cache:
-            # Используем реальный гибридный поиск
-            try:
-                results = pipeline_cache['hybrid_search'].search_transits(times, fluxes)
-                for i, candidate_data in enumerate(results['candidates']):
-                    candidates.append(Candidate(
-                        id=f"hybrid_{i}",
-                        period=candidate_data['period'],
-                        depth=candidate_data['depth'],
-                        duration=candidate_data['duration'],
-                        confidence=candidate_data['confidence'],
-                        start_time=candidate_data['start_time'],
-                        end_time=candidate_data['end_time'],
-                        method="hybrid"
-                    ))
-            except Exception as e:
-                logger.warning(f"Ошибка гибридного поиска: {e}")
-                # Fallback к простому алгоритму
-                candidates = _simple_transit_detection(times, fluxes, "hybrid")
-        
-        elif request.model_type == "ensemble" and "main_pipeline" in pipeline_cache:
-            # Используем основной пайплайн
-            try:
-                results = pipeline_cache['main_pipeline'].run_full_pipeline(
-                    tic_ids=[tic_id],
-                    train_models=False,
-                    top_n=10
-                )
-                # Конвертируем результаты в формат API
-                for i, candidate in enumerate(results.get('candidates', [])):
-                    candidates.append(Candidate(
-                        id=f"ensemble_{i}",
-                        period=candidate.get('period', 0),
-                        depth=candidate.get('depth', 0),
-                        duration=candidate.get('duration', 0),
-                        confidence=candidate.get('confidence', 0),
-                        start_time=candidate.get('start_time', 0),
-                        end_time=candidate.get('end_time', 0),
-                        method="ensemble"
-                    ))
-            except Exception as e:
-                logger.warning(f"Ошибка основного пайплайна: {e}")
-                candidates = _simple_transit_detection(times, fluxes, "ensemble")
-        
-        else:
-            # Простой алгоритм детекции для демонстрации
-            candidates = _simple_transit_detection(times, fluxes, request.model_type)
+        # Простой алгоритм детекции для демонстрации
+        candidates = _simple_transit_detection(times, fluxes, request.model_type)
         
         # Вычисляем статистики
         processing_time = (datetime.now() - start_time).total_seconds()
