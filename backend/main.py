@@ -153,81 +153,64 @@ async def health_check():
 
 @app.get("/api/nasa/stats")
 async def get_nasa_stats():
-    """Получение статистики NASA для лендинга"""
-    return {
-        "totalPlanets": 10000,  # Примерное количество подтвержденных экзопланет
-        "totalHosts": 6000     # Примерное количество звезд-хозяев
-    }
+    """Получение РЕАЛЬНОЙ статистики NASA для лендинга"""
+    try:
+        # Импортируем наш NASA API модуль
+        from nasa_api import nasa_integration
+        
+        # Получаем реальные данные NASA
+        real_stats = await nasa_integration.get_nasa_statistics()
+        
+        logger.info(f"Получена реальная статистика NASA: {real_stats}")
+        return real_stats
+        
+    except Exception as e:
+        logger.error(f"Ошибка получения статистики NASA: {e}")
+        
+        # Fallback данные
+        return {
+            "totalPlanets": 5635,
+            "totalHosts": 4143,
+            "lastUpdated": datetime.now().isoformat(),
+            "source": "Fallback data",
+            "error": str(e)
+        }
 
 
 @app.post("/load-tic")
 async def load_tic_data(request: TICRequest):
-    """Загрузка данных TESS по TIC ID"""
+    """Загрузка РЕАЛЬНЫХ данных TESS по TIC ID с параметрами NASA"""
     try:
         tic_id = request.tic_id
         sectors = request.sectors
         
-        logger.info(f"Загрузка данных для TIC {tic_id}")
+        logger.info(f"Загрузка РЕАЛЬНЫХ данных для TIC {tic_id}")
         
-        # Если есть реальный загрузчик данных
-        if "data_loader" in pipeline_cache:
-            try:
-                # Загружаем реальные данные
-                lightcurve = pipeline_cache['data_loader'].load_lightcurve(tic_id, sectors)
-                if lightcurve:
-                    return {
-                        "success": True,
-                        "data": {
-                            "tic_id": tic_id,
-                            "times": lightcurve['times'].tolist(),
-                            "fluxes": lightcurve['fluxes'].tolist(),
-                            "metadata": lightcurve.get('metadata', {})
-                        }
-                    }
-            except Exception as e:
-                logger.warning(f"Ошибка загрузки реальных данных: {e}")
+        # Импортируем наш NASA API модуль
+        from nasa_api import nasa_integration
         
-        # Генерируем синтетические данные для демонстрации
-        logger.info("Генерация синтетических данных для демонстрации")
+        # Получаем данные с реальными параметрами NASA
+        result = await nasa_integration.load_tic_data_enhanced(tic_id)
         
-        # Создаем синтетическую кривую блеска
-        times = np.linspace(0, 30, 2000)  # 30 дней, 2000 точек
-        base_flux = np.ones_like(times)
-        
-        # Добавляем шум
-        noise = np.random.normal(0, 0.01, len(times))
-        base_flux += noise
-        
-        # Добавляем звездную вариацию
-        stellar_variation = 0.005 * np.sin(2 * np.pi * times / 5.0)
-        base_flux += stellar_variation
-        
-        # Случайно добавляем транзиты
-        if np.random.rand() < 0.7:  # 70% вероятность транзита
-            period = np.random.uniform(3, 20)
-            depth = np.random.uniform(0.005, 0.03)
-            duration = np.random.uniform(0.1, 0.5)
-            t0 = np.random.uniform(0, period)
+        if result["success"]:
+            logger.info(f"Успешно загружены данные TIC {tic_id}: {result['message']}")
             
-            for t in times:
-                phase = (t - t0) % period
-                if phase < duration or phase > (period - duration):
-                    idx = int(t * len(times) / 30)
-                    if 0 <= idx < len(base_flux):
-                        base_flux[idx] -= depth
-        
-        return {
-            "success": True,
-            "data": {
-                "tic_id": tic_id,
-                "times": times.tolist(),
-                "fluxes": base_flux.tolist(),
-                "metadata": {
-                    "synthetic": True,
-                    "generated_at": datetime.now().isoformat()
-                }
+            # Добавляем информацию о реальных данных
+            response = {
+                "success": True,
+                "data": result["data"],
+                "nasa_integration": True,
+                "real_star_parameters": len(result.get("real_star_data", [])) > 0,
+                "message": result["message"]
             }
-        }
+            
+            # Если есть реальные параметры звезды, добавляем их
+            if result.get("real_star_data"):
+                response["star_info"] = result["real_star_data"][0]
+            
+            return response
+        else:
+            raise HTTPException(status_code=500, detail=result.get("error", "Неизвестная ошибка"))
         
     except Exception as e:
         logger.error(f"Ошибка загрузки данных TIC {request.tic_id}: {e}")

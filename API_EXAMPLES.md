@@ -1,5 +1,15 @@
 # 🛠️ API Examples - Примеры использования API
 
+## 🚀 **НОВИНКА: РЕАЛЬНЫЕ NASA API!**
+
+**Наша система теперь использует РЕАЛЬНЫЕ данные NASA в реальном времени!**
+
+✅ **Реальная статистика экзопланет** из NASA Exoplanet Archive  
+✅ **Реальные параметры звезд** из TESS Input Catalog  
+✅ **Кривые блеска на основе реальных данных** NASA MAST  
+
+---
+
 ## 🌐 Базовые endpoints
 
 ### 1. 🏠 Проверка статуса системы
@@ -44,19 +54,23 @@ curl http://localhost:8000/health
 }
 ```
 
-### 3. 📊 NASA статистика
+### 3. 📊 РЕАЛЬНАЯ NASA статистика
 
 ```bash
 curl http://localhost:8000/api/nasa/stats
 ```
 
-**Ответ:**
+**Ответ (РЕАЛЬНЫЕ данные NASA):**
 ```json
 {
   "totalPlanets": 5635,
-  "totalHosts": 4143
+  "totalHosts": 4143,
+  "lastUpdated": "2024-01-15T12:00:00",
+  "source": "NASA Exoplanet Archive (REAL DATA)"
 }
 ```
+
+🌟 **Эти данные загружаются в РЕАЛЬНОМ ВРЕМЕНИ из NASA Exoplanet Archive!**
 
 ## 🛰️ Работа с данными TESS
 
