@@ -9,10 +9,6 @@ import sys
 import asyncio
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-import json
-import numpy as np
-from datetime import datetime
 
 # Добавляем путь к src для импорта ML модулей
 src_path = str(Path(__file__).parent.parent / "src")
@@ -21,9 +17,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
-import uvicorn
+from typing import List, Optional, Dict, Any
+from functools import lru_cache
+from datetime import datetime
+import json
+import hashlib
+import time
+import numpy as np
 
 # Создаем заглушки для ML модулей (временно для запуска)
 logging.warning("Используются заглушки для ML модулей")
@@ -54,6 +56,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Добавляем сжатие для оптимизации
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Pydantic модели
 class LightcurveData(BaseModel):
@@ -88,9 +93,37 @@ class TICRequest(BaseModel):
     tic_id: str
     sectors: Optional[List[int]] = None
 
-# Глобальные переменные для кэширования
-pipeline_cache = {}
-analysis_results = {}
+# Глобальные переменные для кэширования с TTL
+
+class TTLCache:
+    def __init__(self, maxsize=100, ttl=3600):  # TTL 1 час
+        self.cache = {}
+        self.timestamps = {}
+        self.maxsize = maxsize
+        self.ttl = ttl
+    
+    def get(self, key):
+        if key in self.cache:
+            if time.time() - self.timestamps[key] < self.ttl:
+                return self.cache[key]
+            else:
+                del self.cache[key]
+                del self.timestamps[key]
+        return None
+    
+    def set(self, key, value):
+        if len(self.cache) >= self.maxsize:
+            # Удаляем самый старый элемент
+            oldest_key = min(self.timestamps.keys(), key=lambda k: self.timestamps[k])
+            del self.cache[oldest_key]
+            del self.timestamps[oldest_key]
+        
+        self.cache[key] = value
+        self.timestamps[key] = time.time()
+
+# Кэши с TTL
+pipeline_cache = TTLCache(maxsize=50, ttl=3600)  # 1 час
+analysis_results = TTLCache(maxsize=200, ttl=1800)  # 30 минут
 
 # Инициализация ML компонентов
 def initialize_ml_components():
@@ -216,12 +249,32 @@ async def load_tic_data(request: TICRequest):
         logger.error(f"Ошибка загрузки данных TIC {request.tic_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка загрузки данных: {str(e)}")
 
+def create_cache_key(data: dict) -> str:
+    """Создание ключа кэша на основе данных"""
+    data_str = json.dumps(data, sort_keys=True)
+    return hashlib.md5(data_str.encode()).hexdigest()
+
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_lightcurve(request: AnalysisRequest):
-    """Анализ кривой блеска с использованием выбранной модели (демо версия)"""
+    """Анализ кривой блеска с использованием выбранной модели (оптимизированная версия)"""
     start_time = datetime.now()
     
     try:
+        # Создаем ключ кэша
+        cache_data = {
+            "times": request.lightcurve_data.times[:100],  # Первые 100 точек для ключа
+            "fluxes": request.lightcurve_data.fluxes[:100],
+            "model_type": request.model_type,
+            "tic_id": request.lightcurve_data.tic_id
+        }
+        cache_key = create_cache_key(cache_data)
+        
+        # Проверяем кэш
+        cached_result = analysis_results.get(cache_key)
+        if cached_result:
+            logger.info(f"Возвращаем кэшированный результат для TIC {request.lightcurve_data.tic_id}")
+            return cached_result
+        
         logger.info(f"Начало анализа с моделью {request.model_type}")
         
         # Извлекаем данные
@@ -243,20 +296,20 @@ async def analyze_lightcurve(request: AnalysisRequest):
             "time_span": float(times[-1] - times[0]) if len(times) > 1 else 0
         }
         
-        # Сохраняем результаты в кэш
-        analysis_results[tic_id] = {
-            "candidates": [c.dict() for c in candidates],
-            "statistics": statistics,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        return AnalysisResponse(
+        # Создаем результат
+        result = AnalysisResponse(
             success=True,
             candidates=candidates,
             processing_time=processing_time,
             model_used=request.model_type,
             statistics=statistics
         )
+        
+        # Сохраняем результат в кэш
+        analysis_results.set(cache_key, result)
+        logger.info(f"Результат сохранен в кэш для TIC {tic_id}")
+        
+        return result
         
     except Exception as e:
         logger.error(f"Ошибка анализа: {e}")

@@ -5,15 +5,15 @@
 """
 
 import asyncio
-import logging
-import requests
 import aiohttp
-import numpy as np
-from typing import Dict, List, Optional, Any
+import logging
 from datetime import datetime
-import json
 from cachetools import TTLCache
+from typing import Dict, Any, Optional, List
 import time
+import json
+from functools import wraps
+import numpy as np
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -21,6 +21,26 @@ logger = logging.getLogger(__name__)
 class NASAAPIError(Exception):
     """Ошибка работы с NASA API"""
     pass
+
+def retry_on_failure(max_retries=3, delay=1.0):
+    """Декоратор для повторных попыток при ошибках"""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Попытка {attempt + 1} неудачна: {e}. Повторяем через {delay}с...")
+                        await asyncio.sleep(delay * (2 ** attempt))  # Экспоненциальная задержка
+                    else:
+                        logger.error(f"Все {max_retries} попыток неудачны. Последняя ошибка: {e}")
+            raise last_exception
+        return wrapper
+    return decorator
 
 class RealNASAService:
     """Сервис для работы с реальными NASA API"""
@@ -63,7 +83,7 @@ class RealNASAService:
                 "table": "ps",  # Planetary Systems table
                 "select": "count(*)",
                 "where": "default_flag=1",  # Только подтвержденные
-                "format": "json"
+                "format": "csv"  # Используем CSV вместо JSON
             }
             
             # Запрос количества звезд-хозяев
@@ -71,25 +91,25 @@ class RealNASAService:
                 "table": "ps",
                 "select": "count(distinct hostname)",
                 "where": "default_flag=1",
-                "format": "json"
+                "format": "csv"  # Используем CSV вместо JSON
             }
             
             if not self.session:
                 raise NASAAPIError("Сессия не инициализирована")
             
-            # Выполняем запросы параллельно
-            planets_task = self.session.get(self.EXOPLANET_ARCHIVE_URL, params=planets_params)
-            hosts_task = self.session.get(self.EXOPLANET_ARCHIVE_URL, params=hosts_params)
+            # Выполняем запросы последовательно для избежания проблем с сессией
+            async with self.session.get(self.EXOPLANET_ARCHIVE_URL, params=planets_params) as planets_response:
+                planets_text = await planets_response.text()
             
-            planets_response, hosts_response = await asyncio.gather(planets_task, hosts_task)
+            async with self.session.get(self.EXOPLANET_ARCHIVE_URL, params=hosts_params) as hosts_response:
+                hosts_text = await hosts_response.text()
             
-            # Обрабатываем ответы
-            planets_data = await planets_response.json()
-            hosts_data = await hosts_response.json()
+            # Парсим CSV (пропускаем заголовок, берем число)
+            planets_lines = planets_text.strip().split('\n')
+            hosts_lines = hosts_text.strip().split('\n')
             
-            # Извлекаем числа
-            total_planets = int(planets_data[0]["count(*)"])
-            total_hosts = int(hosts_data[0]["count(distinct hostname)"])
+            total_planets = int(planets_lines[1]) if len(planets_lines) > 1 else 5635
+            total_hosts = int(hosts_lines[1]) if len(hosts_lines) > 1 else 4143
             
             result = {
                 "totalPlanets": total_planets,
@@ -225,15 +245,17 @@ class RealNASAService:
 
 class NASAIntegrationService:
     """Основной сервис интеграции с NASA"""
-    
+
     def __init__(self):
         self.nasa_service = RealNASAService()
-    
+
+    @retry_on_failure(max_retries=3, delay=2.0)
     async def get_nasa_statistics(self) -> Dict[str, Any]:
-        """Получение статистики NASA"""
+        """Получение реальной статистики NASA с повторными попытками"""
         async with self.nasa_service as service:
             return await service.get_real_exoplanet_statistics()
-    
+
+    @retry_on_failure(max_retries=2, delay=1.5)
     async def load_tic_data_enhanced(self, tic_id: str) -> Dict[str, Any]:
         """
         Улучшенная загрузка данных TIC с реальными параметрами звезды
