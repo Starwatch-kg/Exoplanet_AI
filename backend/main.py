@@ -8,6 +8,7 @@ import os
 import sys
 import asyncio
 import logging
+import uvicorn
 from pathlib import Path
 
 # Добавляем путь к src для импорта ML модулей
@@ -254,6 +255,8 @@ def create_cache_key(data: dict) -> str:
     data_str = json.dumps(data, sort_keys=True)
     return hashlib.md5(data_str.encode()).hexdigest()
 
+from signal_processor import SignalProcessor
+
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze_lightcurve(request: AnalysisRequest):
     """Анализ кривой блеска с использованием выбранной модели (оптимизированная версия)"""
@@ -282,8 +285,36 @@ async def analyze_lightcurve(request: AnalysisRequest):
         fluxes = np.array(request.lightcurve_data.fluxes)
         tic_id = request.lightcurve_data.tic_id
         
-        # Простой алгоритм детекции для демонстрации
-        candidates = _simple_transit_detection(times, fluxes, request.model_type)
+        # Создание и использование процессора сигналов
+        processor = SignalProcessor(fluxes)\
+            .remove_noise('wavelet')\
+            .detect_transits(threshold=4.5)\
+            .analyze_periodicity()\
+            .extract_features()\
+            .classify_signal()  # Добавляем классификацию
+        
+        # Формируем кандидатов на основе обнаруженных транзитов
+        candidates = []
+        for i, transit_idx in enumerate(processor.transits):
+            # Для простоты - каждый индекс транзита это центр транзита
+            start_idx = max(0, transit_idx - 10)
+            end_idx = min(len(times)-1, transit_idx + 10)
+            
+            depth = np.mean(fluxes) - np.min(fluxes[start_idx:end_idx])
+            
+            # Используем классификацию для определения уверенности
+            confidence = processor.features['probabilities'][0]  # Вероятность класса 'планета'
+            
+            candidates.append(Candidate(
+                id=f"transit_{i}",
+                period=processor.features.get('period', 0),
+                depth=depth,
+                duration=times[end_idx] - times[start_idx],
+                confidence=confidence,
+                start_time=times[start_idx],
+                end_time=times[end_idx],
+                method="wavelet+matched_filter+cnn"
+            ))
         
         # Вычисляем статистики
         processing_time = (datetime.now() - start_time).total_seconds()
@@ -293,7 +324,12 @@ async def analyze_lightcurve(request: AnalysisRequest):
             "average_confidence": np.mean([c.confidence for c in candidates]) if candidates else 0,
             "processing_time": processing_time,
             "data_points": len(times),
-            "time_span": float(times[-1] - times[0]) if len(times) > 1 else 0
+            "time_span": float(times[-1] - times[0]) if len(times) > 1 else 0,
+            "mean": processor.features['mean'],
+            "std": processor.features['std'],
+            "skew": processor.features['skew'],
+            "kurtosis": processor.features['kurtosis'],
+            "detected_period": processor.features.get('period', None)
         }
         
         # Создаем результат
@@ -321,58 +357,6 @@ async def analyze_lightcurve(request: AnalysisRequest):
             statistics={},
             error=str(e)
         )
-
-def _simple_transit_detection(times: np.ndarray, fluxes: np.ndarray, method: str) -> List[Candidate]:
-    """Простой алгоритм детекции транзитов для демонстрации"""
-    candidates = []
-    
-    # Вычисляем статистики
-    mean_flux = np.mean(fluxes)
-    std_flux = np.std(fluxes)
-    threshold = mean_flux - 2 * std_flux
-    
-    # Ищем области с пониженным потоком
-    in_transit = fluxes < threshold
-    
-    # Группируем соседние точки
-    groups = []
-    current_group = []
-    
-    for i, is_transit in enumerate(in_transit):
-        if is_transit:
-            current_group.append(i)
-        else:
-            if len(current_group) >= 5:  # Минимум 5 точек для транзита
-                groups.append(current_group)
-            current_group = []
-    
-    # Добавляем последнюю группу
-    if len(current_group) >= 5:
-        groups.append(current_group)
-    
-    # Создаем кандидатов
-    for i, group in enumerate(groups[:3]):  # Максимум 3 кандидата
-        start_idx = group[0]
-        end_idx = group[-1]
-        
-        period = np.random.uniform(5, 20)  # Случайный период
-        depth = mean_flux - np.min(fluxes[group])
-        duration = times[end_idx] - times[start_idx]
-        confidence = min(0.9, depth / std_flux * 0.1 + np.random.uniform(0.6, 0.8))
-        
-        candidates.append(Candidate(
-            id=f"{method}_{i}",
-            period=period,
-            depth=depth,
-            duration=duration,
-            confidence=confidence,
-            start_time=times[start_idx],
-            end_time=times[end_idx],
-            method=method
-        ))
-    
-    return candidates
-
 
 if __name__ == "__main__":
     uvicorn.run(

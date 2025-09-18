@@ -141,3 +141,48 @@
   60% { content: '..'; }
   80%, 100% { content: '...'; }
 }
+
+/* Темная космическая тема */
+:root {
+  --space-black: #0b0d17;
+  --deep-space: #1a1b2f;
+  --neon-blue: #6ec3f9;
+  --planet-orange: #ff6b35;
+  --exo-purple: #9d4edd;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(ellipse at center, var(--deep-space) 0%, var(--space-black) 70%);
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+/* Дополнительные стили для компонентов */
+.button {
+  background: linear-gradient(135deg, var(--neon-blue), var(--exo-purple));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+}
+
+/* Анимации для графиков */
+@keyframes pulsate {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.plot-container {
+  animation: pulsate 4s infinite;
+}
