@@ -232,13 +232,9 @@ npm run dev
 ## 🤝 Вклад в проект
 
 1. Fork репозитория
-2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
+2. Создайте feature branch
 3. Внесите изменения
-4. Закоммитьте изменения (`git commit -m 'Add amazing feature'`)
-5. Push в ветку (`git push origin feature/amazing-feature`)
-6. Создайте Pull Request
-
-**Основная ветка: `master`**
+4. Создайте Pull Request
 
 ## 📄 Лицензия
 

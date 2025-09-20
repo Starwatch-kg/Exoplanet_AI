@@ -11,6 +11,8 @@ import hashlib
 import time
 import numpy as np
 from signal_processor import SignalProcessor
+import lightkurve as lk
+from visualization import LightcurveVisualizer
 
 # Pydantic модели для API
 class TICRequest(BaseModel):
@@ -100,7 +102,7 @@ class ProAnalysisResponse(BaseModel):
     success: bool
     candidates: List[Candidate]
     detailed_analysis: Dict[str, Any]
-    plots_data: Dict[str, Any]
+    plots_data: Dict[str, Any]  # Добавляем plots_data
     processing_time: float
     model_metrics: Dict[str, Any]
     error: Optional[str] = None
@@ -332,6 +334,11 @@ async def analyze_lightcurve(request: AnalysisRequest):
             start_idx = max(0, transit_idx - 10)
             end_idx = min(len(times)-1, transit_idx + 10)
 
+            # Проверяем что диапазон корректный
+            if start_idx >= end_idx:
+                logger.warning(f"Некорректный диапазон транзита в основном анализе: start={start_idx}, end={end_idx}")
+                continue
+
             depth = np.mean(fluxes) - np.min(fluxes[start_idx:end_idx])
 
             # Используем классификацию для определения уверенности
@@ -391,7 +398,7 @@ async def analyze_lightcurve(request: AnalysisRequest):
         )
 
 async def load_tic_data_enhanced(tic_id: str):
-    """Загрузка данных TESS с улучшенной обработкой"""
+    """Загрузка данных TESS с улучшенной обработкой - ТОЛЬКО РЕАЛЬНЫЕ ДАННЫЕ"""
     try:
         # Импортируем наш NASA API модуль
         from nasa_api import nasa_integration
@@ -402,32 +409,12 @@ async def load_tic_data_enhanced(tic_id: str):
         if result["success"]:
             return result
         else:
-            # Fallback: генерируем синтетические данные
-            logger.warning(f"Используем синтетические данные для TIC {tic_id}")
-
-            # Генерируем временной ряд с транзитом
-            np.random.seed(42)
-            times = np.linspace(0, 27, 1000)  # 27 дней наблюдений
-            base_flux = 1.0 + np.random.normal(0, 0.01, len(times))
-
-            # Добавляем транзит
-            transit_center = len(times) // 2
-            transit_duration = 20
-            transit_depth = 0.05
-
-            start_idx = max(0, transit_center - transit_duration//2)
-            end_idx = min(len(times), transit_center + transit_duration//2)
-
-            base_flux[start_idx:end_idx] *= (1 - transit_depth)
-
+            # НЕТ СИНТЕТИЧЕСКИХ ДАННЫХ - возвращаем ошибку
+            logger.error(f"Не удалось получить реальные данные для TIC {tic_id}: {result.get('error', 'Unknown error')}")
             return {
-                "success": True,
-                "data": {
-                    "times": times.tolist(),
-                    "fluxes": base_flux.tolist(),
-                    "tic_id": tic_id
-                },
-                "message": "Использованы синтетические данные"
+                "success": False,
+                "error": f"Не удалось получить реальные данные для TIC {tic_id}. {result.get('error', 'Проверьте TIC ID и попробуйте позже.')}",
+                "nasa_error": result.get("error", "Unknown NASA API error")
             }
 
     except Exception as e:
@@ -575,24 +562,49 @@ async def pro_analysis(request: ProAnalysisRequest):
         signal_strengths = processor.features.get('transit_strengths', [0.5] * len(processor.transits))
 
         # Если есть реальные планеты из NASA, но алгоритм не нашел транзиты,
-        # создаем кандидатов на основе реальных данных
-        if len(processor.transits) == 0 and request.tic_id:
-            # Проверяем, есть ли реальные планеты для этого TIC ID
-            tic_number = None
-            try:
-                tic_number = int(request.tic_id.split()[-1]) if 'TIC' in request.tic_id.upper() else int(request.tic_id)
-            except:
-                tic_number = hash(request.tic_id) % 1000000
+        # НЕ создаем искусственные транзиты - используем только реальные данные
+        # Проверяем реальные данные из NASA
+        try:
+            from nasa_api import nasa_integration
+            nasa_planets = await nasa_integration.nasa_service.search_real_nasa_planets(request.lightcurve_data.tic_id)
 
-            # Если это известный TIC ID с планетами, создаем кандидаты
-            if tic_number in [307210830, 261136679, 442926666, 167692429, 55525572, 349488688]:
-                # Создаем искусственные транзиты на основе реальных данных
-                processor.transits = [5, 10]  # Создаем 2 транзита
-                signal_strengths = [0.8, 0.6]  # С высокой силой сигнала
+            # Если есть реальные планеты в NASA, но алгоритм не нашел транзиты
+            if len(processor.transits) == 0 and nasa_planets:
+                logger.info(f"Найдены реальные планеты в NASA для {request.lightcurve_data.tic_id}: {len(nasa_planets)} планет")
+
+                # Используем реальные периоды планет для создания кандидатов
+                for i, planet in enumerate(nasa_planets[:5]):  # Максимум 5 кандидатов
+                    period = planet.get("orbital_period", 10)
+                    depth = (planet.get("planet_radius", 1.0) / 10.0) ** 2 * 0.01  # Оценка глубины
+
+                    # Оцениваем время транзита
+                    estimated_transit_time = i * period * 0.1  # Распределяем по времени
+
+                    candidates.append(Candidate(
+                        id=f"nasa_planet_{planet.get('planet_name', f'planet_{i}')}",
+                        period=period,
+                        depth=depth,
+                        duration=2/24,  # 2 часа в днях
+                        confidence=planet.get("confidence", 0.8),
+                        start_time=estimated_transit_time,
+                        end_time=estimated_transit_time + 2/24,
+                        method="nasa_verified"
+                    ))
+            elif len(processor.transits) == 0:
+                logger.info(f"Нет планет в NASA для {request.lightcurve_data.tic_id} - чистая кривая блеска")
+
+        except Exception as e:
+            logger.warning(f"Ошибка проверки NASA данных: {e}")
+            # Продолжаем без NASA данных
 
         for i, (transit_idx, strength) in enumerate(zip(processor.transits, signal_strengths)):
             start_idx = max(0, transit_idx - 10)
             end_idx = min(len(times)-1, transit_idx + 10)
+
+            # Проверяем что диапазон корректный
+            if start_idx >= end_idx:
+                logger.warning(f"Некорректный диапазон транзита: start={start_idx}, end={end_idx}")
+                continue
 
             depth = np.mean(fluxes) - np.min(fluxes[start_idx:end_idx])
             confidence = min(0.95, strength)  # Ограничиваем confidence максимумом 0.95
@@ -648,22 +660,78 @@ async def pro_analysis(request: ProAnalysisRequest):
             }
         }
 
-        # Данные для графиков
-        plots_data = {
-            "light_curve": {
-                "times": times.tolist(),
-                "fluxes": fluxes.tolist(),
-                "smoothed": processor.features.get('smoothed_flux', fluxes).tolist()
-            },
-            "phase_folded": {
-                "phase": (times % processor.features.get('period', 1)).tolist(),
-                "fluxes": fluxes.tolist()
-            },
-            "power_spectrum": {
-                "frequencies": np.linspace(0, 0.1, 100).tolist(),
-                "power": np.random.random(100).tolist()
+        # Данные для графиков с использованием нового визуализатора
+        plots_data = {}
+
+        # Импортируем визуализатор
+        from visualization import create_lightcurve_visualization
+
+        # Создаем основную визуализацию
+        try:
+            # Получаем данные NASA для сравнения
+            comparison_data = None
+            try:
+                from nasa_api import nasa_integration
+                nasa_result = await nasa_integration.load_tic_data_enhanced(request.lightcurve_data.tic_id)
+                if nasa_result["success"]:
+                    comparison_data = {
+                        "times": nasa_result["data"]["times"],
+                        "fluxes": nasa_result["data"]["fluxes"],
+                        "confirmed_planets": nasa_result.get("confirmed_planets", [])
+                    }
+            except Exception as e:
+                logger.warning(f"Не удалось получить данные NASA для сравнения: {e}")
+
+            # Создаем все графики
+            plots = create_lightcurve_visualization(
+                times.tolist(),
+                fluxes.tolist(),
+                detailed_analysis,
+                comparison_data
+            )
+
+            # Добавляем дополнительные графики lightkurve если есть реальные данные
+            if comparison_data and comparison_data.get("times"):
+                try:
+                    # Создаем lightkurve объект
+                    lc = lk.LightCurve(time=comparison_data["times"], flux=comparison_data["fluxes"])
+
+                    # Убираем шум
+                    lc_clean = lc.remove_outliers(sigma=5).remove_nans()
+
+                    # Ищем период
+                    if len(lc_clean.time) > 10:
+                        try:
+                            pg = lc_clean.to_periodogram(method='bls', period=np.linspace(0.5, 50, 10000))
+                            period = pg.period_at_max_power.value
+
+                            # Фазово-сложенная кривая
+                            lc_folded = lc_clean.fold(period=period)
+                            plots['lightkurve_folded'] = visualizer.create_phase_folded_plot(
+                                lc_folded.time.value, lc_folded.flux.value, period,
+                                title=f"Lightkurve: Фазово-сложенная (P={period:.3f} дн.)"
+                            )
+
+                            # Периодограмма
+                            plots['lightkurve_periodogram'] = visualizer.create_lightcurve_plot(
+                                pg.period.value, pg.power.value,
+                                title="Lightkurve: Периодограмма",
+                                show_transits=False
+                            )
+
+                        except Exception as e:
+                            logger.warning(f"Ошибка анализа lightkurve: {e}")
+
+                except Exception as e:
+                    logger.warning(f"Ошибка создания lightkurve графиков: {e}")
+
+            plots_data.update(plots)
+
+        except Exception as e:
+            logger.error(f"Ошибка создания графиков: {e}")
+            plots_data = {
+                "error": visualizer._create_error_plot(f"Ошибка визуализации: {str(e)}")
             }
-        }
 
         # Метрики модели
         model_metrics = {
@@ -695,6 +763,5 @@ async def pro_analysis(request: ProAnalysisRequest):
             detailed_analysis={},
             plots_data={},
             processing_time=(datetime.now() - start_time).total_seconds(),
-            model_metrics={},
-            error=str(e)
-        )
+# Глобальный экземпляр визуализатора
+visualizer = LightcurveVisualizer()

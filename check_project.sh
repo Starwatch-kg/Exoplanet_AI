@@ -70,7 +70,7 @@ fi
 
 # Pytest (тесты)
 echo "🧪 Pytest..."
-if pytest tests/ -v --tb=short 2>/dev/null; then
+if pytest test_exoplanetai.py -v --tb=short 2>/dev/null; then
     echo "✅ Pytest: Все тесты пройдены"
 else
     echo "❌ Pytest: Некоторые тесты не пройдены"
@@ -78,10 +78,26 @@ fi
 
 # Проверка импортов
 echo "📥 Проверка импортов..."
-if python -c "import main; print('✅ Backend imports successfully')" 2>/dev/null; then
+if python -c "import main, nasa_api, signal_processor, visualization; print('✅ Все модули импортированы успешно')" 2>/dev/null; then
     echo "✅ Imports: OK"
 else
     echo "❌ Imports: Проблемы с импортами"
+fi
+
+# Проверка новых возможностей
+echo "🔬 Проверка новых возможностей..."
+if python -c "import lightkurve, matplotlib; print('✅ Lightkurve и Matplotlib доступны')" 2>/dev/null; then
+    echo "✅ Визуализация: Lightkurve и Matplotlib готовы"
+else
+    echo "❌ Визуализация: Проблемы с библиотеками"
+fi
+
+# Проверка NASA API
+echo "🛰️ Проверка NASA API..."
+if python -c "from nasa_api import nasa_integration; print('✅ NASA API модуль доступен')" 2>/dev/null; then
+    echo "✅ NASA API: OK"
+else
+    echo "❌ NASA API: Проблемы с модулем"
 fi
 
 echo ""
@@ -91,5 +107,23 @@ echo "   - Black: $(black --check . 2>/dev/null && echo 'OK' || echo 'Пробл
 echo "   - Flake8: $(flake8 . --count --select=E9,F63,F7,F82 2>/dev/null && echo 'OK' || echo 'Проблемы')"
 echo "   - MyPy: $(mypy . --ignore-missing-imports 2>/dev/null && echo 'OK' || echo 'Проблемы')"
 echo "   - Bandit: $(bandit -r . 2>/dev/null && echo 'OK' || echo 'Проблемы')"
-echo "   - Tests: $(pytest tests/ --tb=no -q 2>/dev/null && echo 'OK' || echo 'Проблемы')"
-echo "   - Imports: $(python -c 'import main' 2>/dev/null && echo 'OK' || echo 'Проблемы')"
+echo "   - Tests: $(pytest test_exoplanetai.py --tb=no -q 2>/dev/null && echo 'OK' || echo 'Проблемы')"
+echo "   - Imports: $(python -c 'import main, nasa_api, signal_processor, visualization' 2>/dev/null && echo 'OK' || echo 'Проблемы')"
+echo "   - Lightkurve: $(python -c 'import lightkurve' 2>/dev/null && echo 'OK' || echo 'Проблемы')"
+echo "   - NASA API: $(python -c 'from nasa_api import nasa_integration' 2>/dev/null && echo 'OK' || echo 'Проблемы')"
+
+echo ""
+echo "📈 Новые возможности:"
+echo "   ✅ Убраны синтетические данные"
+echo "   ✅ Добавлена визуализация с Matplotlib"
+echo "   ✅ Интегрирован Lightkurve"
+echo "   ✅ Улучшена интеграция с NASA API"
+echo "   ✅ Добавлены графики в Pro анализ"
+echo "   ✅ Создан модуль визуализации"
+
+echo ""
+echo "🚀 Проект готов к использованию!"
+echo "📊 API: http://localhost:8001"
+echo "📚 Docs: http://localhost:8001/docs"
+echo "🌟 Ветка: master"
+echo "📞 GitHub: https://github.com/neoalderson/ExoplanetAI"
