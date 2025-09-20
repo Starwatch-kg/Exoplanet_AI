@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -7,11 +7,13 @@ export default defineConfig({
   build: {
     // Оптимизации для production
     minify: 'terser',
+    cssMinify: true,
     rollupOptions: {
       output: {
         // Разделение кода для лучшего кэширования
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ml-vendor': ['tensorflow/tfjs'],
           plotly: ['react-plotly.js', 'plotly.js'],
           ui: ['framer-motion', 'lucide-react']
         }
@@ -28,19 +30,27 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
         changeOrigin: true,
       },
       '/health': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
         changeOrigin: true,
       },
       '/load-tic': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
         changeOrigin: true,
       },
       '/analyze': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/amateur/analyze': {
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/pro/analyze': {
+        target: process.env.VITE_API_URL || 'http://localhost:8001',
         changeOrigin: true,
       },
     },

@@ -16,74 +16,272 @@
   }
 }
 
-@layer components {
-  .cosmic-gradient {
-    background: linear-gradient(to bottom right, #0f172a, #581c87, #0f172a);
+/* Звёздное небо анимация */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shooting-star {
+  0% {
+    transform: translateX(-100px) translateY(-100px) rotate(45deg);
+    opacity: 1;
   }
-  
-  .glass-effect {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+  100% {
+    transform: translateX(calc(100vw + 100px)) translateY(calc(100vh + 100px)) rotate(45deg);
+    opacity: 0;
   }
-  
-  .glow-effect {
-    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
+}
+
+.stars-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: radial-gradient(ellipse at center, #0f172a 0%, #000 100%);
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle 3s infinite ease-in-out;
+}
+
+.star:nth-child(odd) {
+  animation-delay: 1s;
+  animation-duration: 4s;
+}
+
+.star:nth-child(3n) {
+  animation-delay: 2s;
+  animation-duration: 2s;
+}
+
+.planet {
+  position: absolute;
+  background: #9333ea;
+  border-radius: 50%;
+  animation: float 6s infinite ease-in-out;
+}
+
+.nebula {
+  position: absolute;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.shooting-star {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  animation: shooting-star 2s linear infinite;
+}
+
+.shooting-star::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -20px;
+  width: 20px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, white);
+}
+
+/* Улучшенные эффекты */
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.gradient-border {
+  position: relative;
+  background: linear-gradient(45deg, #06b6d4, #9333ea, #ec4899);
+  border-radius: 16px;
+  padding: 2px;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 14px;
+  z-index: -1;
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
   }
-  
-  .space-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
-    transition: all 0.3s;
+  50% {
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.6), 0 0 40px rgba(147, 51, 234, 0.4);
   }
-  
-  .space-card:hover {
-    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.4);
+}
+
+/* Оптимизированные анимации */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Производительные CSS свойства */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Стили для светлой темы */
+.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --accent-tertiary: #ec4899;
+}
+
+.light-theme body {
+  background: linear-gradient(to bottom right, #f8fafc, #e2e8f0, #f8fafc);
+  color: var(--text-primary);
+}
+
+/* Адаптивные стили для светлой темы */
+.light-theme .glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.light-theme .stars-bg {
+  background: radial-gradient(ellipse at center, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.light-theme .star {
+  background: #1e293b;
+}
+
+.light-theme .nebula {
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+}
+
+.light-theme .cosmic-button {
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  color: white;
+}
+
+.light-theme .cosmic-button:hover {
+  background: linear-gradient(to right, #2563eb, #7c3aed);
+}
+
+.light-theme .cosmic-input {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+.light-theme .cosmic-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.light-theme .cosmic-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Улучшенные анимации для светлой темы */
+.light-theme .hover-lift:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.light-theme .pulse-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Мобильная адаптация для светлой темы */
+@media (max-width: 768px) {
+  .light-theme .glass-card {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.8);
   }
-  
-  .cosmic-button {
-    background: linear-gradient(to right, #06b6d4, #9333ea);
-    color: white;
-    font-weight: 600;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    transition: all 0.3s;
-    transform: scale(1);
-    box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
+
+  .light-theme .stars-bg {
+    background-attachment: scroll;
   }
-  
-  .cosmic-button:hover {
-    background: linear-gradient(to right, #0891b2, #7c3aed);
-    transform: scale(1.05);
-  }
-  
-  .cosmic-input {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(6, 182, 212, 0.3);
-    border-radius: 0.5rem;
-    padding: 0.75rem 1rem;
-    color: white;
-    transition: all 0.3s;
-  }
-  
-  .cosmic-input::placeholder {
-    color: rgba(148, 163, 184, 1);
-  }
-  
-  .cosmic-input:focus {
-    border-color: #22d3ee;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
-  }
+}
+
+.cosmic-button {
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s;
+  transform: scale(1);
+  box-shadow: 0 10px 15px -3px rgba(6, 182, 212, 0.25);
+}
+
+.cosmic-button:hover {
+  background: linear-gradient(to right, #0891b2, #7c3aed);
+  transform: scale(1.05);
+}
+
+.cosmic-input {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: white;
+  transition: all 0.3s;
+}
+
+.cosmic-input::placeholder {
+  color: rgba(148, 163, 184, 1);
+}
+
+.cosmic-input:focus {
+  border-color: #22d3ee;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 12px;
 }
 
 ::-webkit-scrollbar-track {

@@ -94,20 +94,29 @@ class ExoplanetAPI {
     });
   }
 
-  // Анализ кривой блеска
-  async analyzeLightcurve(
-    lightcurveData: LightcurveData,
-    modelType: string,
-    parameters?: Record<string, any>
-  ): Promise<AnalysisResponse> {
-    return this.request('/analyze', {
+  // Анализ в любительском режиме
+  async amateurAnalyze(
+    request: AmateurAnalysisRequest
+  ): Promise<AmateurAnalysisResponse> {
+    return this.request('/amateur/analyze', {
       method: 'POST',
-      body: JSON.stringify({
-        lightcurve_data: lightcurveData,
-        model_type: modelType,
-        parameters: parameters,
-      }),
+      body: JSON.stringify(request),
     });
+  }
+
+  // Анализ в профессиональном режиме
+  async proAnalyze(
+    request: ProAnalysisRequest
+  ): Promise<ProAnalysisResponse> {
+    return this.request('/pro/analyze', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  // Получение статистики NASA
+  async getNASAStats(): Promise<Record<string, any>> {
+    return this.request('/api/nasa/stats');
   }
 }
 
@@ -115,3 +124,32 @@ class ExoplanetAPI {
 export const exoplanetApi = new ExoplanetAPI();
 
 // Экспортируем типы для использования в компонентах
+
+export interface AmateurAnalysisRequest {
+  tic_id: string;
+}
+
+export interface AmateurAnalysisResponse {
+  success: boolean;
+  candidate?: Candidate;
+  summary: Record<string, any>;
+  processing_time: number;
+  error?: string;
+}
+
+export interface ProAnalysisRequest {
+  lightcurve_data: LightcurveData;
+  model_type: string;
+  parameters?: Record<string, any>;
+  advanced_settings?: Record<string, any>;
+}
+
+export interface ProAnalysisResponse {
+  success: boolean;
+  candidates: Candidate[];
+  detailed_analysis: Record<string, any>;
+  plots_data: Record<string, any>;
+  processing_time: number;
+  model_metrics: Record<string, any>;
+  error?: string;
+}

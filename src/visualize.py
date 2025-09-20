@@ -1,4 +1,6 @@
 import os
+import matplotlib
+matplotlib.use('Agg')  # Используем неинтерактивный бэкенд для серверной среды
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -45,7 +47,15 @@ def plot_history(history: dict, metric: str, save_path: str, title: str = None,
     plt.grid(True)
     plt.tight_layout()
     
-    full_save_path = os.path.join(RESULTS_DIR, save_path)
+    # Всегда сохраняем в файл, поскольку используем неинтерактивный бэкенд
+    if save_path:
+        full_save_path = os.path.join(RESULTS_DIR, save_path)
+    else:
+        # Генерируем уникальное имя файла
+        import time
+        timestamp = int(time.time())
+        full_save_path = os.path.join(RESULTS_DIR, f'history_{metric}_{timestamp}.png')
+
     plt.savefig(full_save_path)
     print(f"Saved {metric} plot to {full_save_path}")
     plt.close()
@@ -80,7 +90,15 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, classes: list[
     plt.xlabel('Predicted Label', fontsize=12)
     plt.tight_layout()
     
-    full_save_path = os.path.join(RESULTS_DIR, save_path)
+    # Всегда сохраняем в файл, поскольку используем неинтерактивный бэкенд
+    if save_path:
+        full_save_path = os.path.join(RESULTS_DIR, save_path)
+    else:
+        # Генерируем уникальное имя файла
+        import time
+        timestamp = int(time.time())
+        full_save_path = os.path.join(RESULTS_DIR, f'confusion_matrix_{timestamp}.png')
+
     plt.savefig(full_save_path)
     print(f"Saved confusion matrix to {full_save_path}")
     plt.close()
@@ -117,21 +135,29 @@ def plot_regression(y_true: np.ndarray, y_pred: np.ndarray, save_path: str,
     plt.grid(True)
     plt.tight_layout()
     
-    full_save_path = os.path.join(RESULTS_DIR, save_path)
+    # Всегда сохраняем в файл, поскольку используем неинтерактивный бэкенд
+    if save_path:
+        full_save_path = os.path.join(RESULTS_DIR, save_path)
+    else:
+        # Генерируем уникальное имя файла
+        import time
+        timestamp = int(time.time())
+        full_save_path = os.path.join(RESULTS_DIR, f'regression_{timestamp}.png')
+
     plt.savefig(full_save_path)
     print(f"Saved regression plot to {full_save_path}")
     plt.close()
 
 def plot_lightcurve(time, flux, probs=None, candidates=None, save_path=None):
     """
-    Строит и опционально сохраняет кривую блеска с кандидатами в транзиты.
+    Строит и сохраняет кривую блеска с кандидатами в транзиты.
 
     Args:
         time (np.ndarray): Временные метки.
         flux (np.ndarray): Значения потока.
         probs (np.ndarray, optional): Вероятности транзита.
         candidates (list, optional): Список словарей с кандидатами.
-        save_path (str, optional): Путь для сохранения графика. Если None, график будет показан.
+        save_path (str, optional): Путь для сохранения графика. Если None, используется имя по умолчанию.
     """
     plt.figure(figsize=(15, 5))
     plt.plot(time, flux, label='Flux', linewidth=1, color='royalblue')
@@ -160,13 +186,20 @@ def plot_lightcurve(time, flux, probs=None, candidates=None, save_path=None):
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
 
+    # Всегда сохраняем в файл, поскольку используем неинтерактивный бэкенд
     if save_path:
         full_save_path = os.path.join(RESULTS_DIR, save_path)
-        plt.savefig(full_save_path)
-        print(f"Saved light curve plot to {full_save_path}")
-        plt.close()
     else:
-        plt.show()
+        # Генерируем уникальное имя файла
+        import time
+        timestamp = int(time.time())
+        full_save_path = os.path.join(RESULTS_DIR, f'lightcurve_{timestamp}.png')
+
+    plt.savefig(full_save_path)
+    print(f"Saved light curve plot to {full_save_path}")
+    plt.close()
+
+    return full_save_path
 
 
 # Пример использования (можно раскомментировать для теста)

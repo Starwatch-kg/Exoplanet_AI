@@ -22,6 +22,6 @@ source venv/bin/activate
 echo "📥 Установка зависимостей..."
 pip install -r requirements.txt
 
-# Запускаем сервер
-echo "🌐 Запуск FastAPI сервера на http://localhost:8000"
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# Запускаем сервер на порту 8001
+echo "🌐 Запуск FastAPI сервера на http://localhost:8001"
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
